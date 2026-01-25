@@ -52,3 +52,5 @@ App.oncreate(() => {
 
 const page = App.div().append(login).append(register);
 App.render(page, { title: 'Auth UI' }).save('index.html');
+
+

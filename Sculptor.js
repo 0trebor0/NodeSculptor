@@ -1,8 +1,8 @@
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
-const document = dom.window.document;
+let dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
+let document = dom.window.document;
 
 class NodeElement {
     constructor(tag, engine) {
@@ -14,7 +14,7 @@ class NodeElement {
     id(value) { this.el.id = value; return this; }
     text(value) { this.el.textContent = value; return this; }
     class(value) {
-        const list = Array.isArray(value) ? value : [value];
+        let list = Array.isArray(value) ? value : [value];
         this.el.classList.add(...list);
         return this;
     }
@@ -22,7 +22,7 @@ class NodeElement {
     css(styles) { Object.assign(this.el.style, styles); return this; }
 
     uniqueClass(rules) {
-        const name = this.engine.generateClassName();
+        let name = this.engine.generateClassName();
         this.engine.defineClass(name, rules);
         this.el.classList.add(name);
         return this;
@@ -47,7 +47,7 @@ class NodeElement {
     click(fn) { return this.on('click', fn); }
 
     append(child) {
-        const node = child instanceof NodeElement ? child.el : child;
+        let node = child instanceof NodeElement ? child.el : child;
         this.el.appendChild(node);
         return this;
     }
@@ -79,9 +79,9 @@ class Sculptor {
     }
 
     defineClass(name, rules) {
-        const cssString = Object.entries(rules)
+        let cssString = Object.entries(rules)
             .map(([prop, val]) => {
-                const key = prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
+                let key = prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
                 return `${key}: ${val};`;
             }).join(' ');
         this.styleBuffer.push(`.${name} { ${cssString} }`);
@@ -95,9 +95,9 @@ class Sculptor {
     h2() { return this.create('h2'); }
 
     render(root, config = { title: 'Sculptor App' }) {
-        const html = this.create('html').attribute('lang', 'en');
-        const head = this.create('head');
-        const body = this.create('body').css({
+        let html = this.create('html').attribute('lang', 'en');
+        let head = this.create('head');
+        let body = this.create('body').css({
             backgroundColor: '#f8f9fa',
             display: 'flex',
             justifyContent: 'center',
