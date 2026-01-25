@@ -14,6 +14,12 @@ class NodeElement {
         }
     }
 
+    child(tag) {
+        let childNode = this.engine.create(tag);
+        this.append(childNode);
+        return childNode;
+    }
+
     id(value) { this.el.id = value; return this; }
     text(value) { this.el.textContent = value; return this; }
     
@@ -60,7 +66,6 @@ class NodeElement {
 
     click(fn) { return this.on('click', fn); }
 
-    // Improved Append: supports .append(a, b, c) or .append([a, b])
     append(...children) {
         children.flat().forEach(child => {
             if (!child) return;
@@ -119,7 +124,6 @@ class Sculptor {
 
     create(tag) { return new NodeElement(tag, this); }
 
-    // Tag Factories
     div() { return this.create('div'); }
     span() { return this.create('span'); }
     section() { return this.create('section'); }
@@ -143,6 +147,10 @@ class Sculptor {
     ul() { return this.create('ul'); }
     li() { return this.create('li'); }
     canvas() { return this.create('canvas'); }
+    strong() { return this.create('strong'); }
+    hr() { return this.create('hr'); }
+    svg() { return this.create('svg'); }
+    path() { return this.create('path'); }
 
     render(root, config = {}) {
         try {
@@ -151,7 +159,6 @@ class Sculptor {
             document.querySelector('title').textContent = config.title || "Sculpted Page";
             body.innerHTML = ""; 
 
-            // 1. ADD EXTERNAL CSS (if provided in config)
             if (config.css) {
                 let cssFiles = Array.isArray(config.css) ? config.css : [config.css];
                 cssFiles.forEach(href => {
@@ -162,7 +169,6 @@ class Sculptor {
                 });
             }
 
-            // 2. ADD FAVICON (if provided in config)
             if (config.icon) {
                 let icon = document.createElement('link');
                 icon.rel = 'shortcut icon';
@@ -171,7 +177,6 @@ class Sculptor {
                 head.appendChild(icon);
             }
 
-            // Process Internal Styles (from sharedClass/uniqueClass)
             if (this.styleBuffer.length > 0) {
                 let styleTag = document.createElement('style');
                 styleTag.textContent = `\n${this.styleBuffer.join('\n')}\n`;
@@ -179,14 +184,12 @@ class Sculptor {
                 this.styleBuffer = [];
             }
 
-            // Process Elements
             let elements = Array.isArray(root) ? root : [root];
             elements.forEach(item => {
                 let node = item instanceof NodeElement ? item.el : item;
                 body.appendChild(node);
             });
 
-            // Process Scripts
             let refLookup = JSON.stringify(this.refs);
             let refScript = `window.UI = { _m: ${refLookup}, get: (n) => document.getElementById(window.UI._m[n]) };`;
 
