@@ -1,14 +1,11 @@
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 
-let dom = new JSDOM(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>`);
-let document = dom.window.document;
-
 class NodeElement {
     constructor(tag, engine) {
         try {
-            this.el = document.createElement(tag);
             this.engine = engine;
+            this.el = engine.document.createElement(tag); // ← changed
         } catch (e) {
             throw new Error(`[NodeSculptor] Failed to create element <${tag}>: ${e.message}`);
         }
@@ -22,7 +19,7 @@ class NodeElement {
 
     id(value) { this.el.id = value; return this; }
     text(value) { this.el.textContent = value; return this; }
-    
+
     ref(name) {
         if (!this.el.id) this.el.id = this.engine.generateId();
         this.engine.refs[name] = this.el.id;
@@ -38,7 +35,7 @@ class NodeElement {
         }
         return this;
     }
-    
+
     attribute(key, value) { this.el.setAttribute(key, value); return this; }
     css(styles) { Object.assign(this.el.style, styles); return this; }
 
@@ -57,7 +54,7 @@ class NodeElement {
     on(event, fn) {
         if (typeof fn !== 'function') throw new Error(`[NodeSculptor] .on expects a function.`);
         if (!this.el.id) this.el.id = this.engine.generateId();
-        
+
         this.engine.scriptBuffer.push(
             `document.getElementById('${this.el.id}').addEventListener('${event}', ${fn.toString()});`
         );
@@ -78,10 +75,15 @@ class NodeElement {
 
 class Sculptor {
     constructor() {
+        // ✅ jsdom is now instance-scoped
+        this.dom = new JSDOM(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>`);
+
+        this.document = this.dom.window.document;
+
         this.scriptBuffer = [];
         this.styleBuffer = [];
-        this.loadBuffer = []; 
-        this.refs = {}; 
+        this.loadBuffer = [];
+        this.refs = {};
         this.idCounter = 0;
         this.classCounter = 0;
         this.lastRendered = "";
@@ -154,10 +156,12 @@ class Sculptor {
 
     render(root, config = {}) {
         try {
+            let document = this.document;
             let head = document.querySelector('head');
             let body = document.querySelector('body');
+
             document.querySelector('title').textContent = config.title || "Sculpted Page";
-            body.innerHTML = ""; 
+            body.innerHTML = "";
 
             if (config.css) {
                 let cssFiles = Array.isArray(config.css) ? config.css : [config.css];
@@ -204,8 +208,8 @@ class Sculptor {
 
             this.scriptBuffer = [];
             this.loadBuffer = [];
-            this.refs = {}; 
-            this.lastRendered = dom.serialize();
+            this.refs = {};
+            this.lastRendered = this.dom.serialize(); // ← changed
         } catch (e) {
             console.error(`[NodeSculptor Render Error] ${e.message}`);
         }
