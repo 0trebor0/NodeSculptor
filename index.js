@@ -1,7 +1,7 @@
 const Sculptor = require('./Sculptor');
 const App = new Sculptor();
 
-// --- 1. Shared Styling (Clean & Reusable) ---
+// --- 1. Shared Styling ---
 App.sharedClass('auth-container', {
     width: '350px',
     padding: '30px',
@@ -30,7 +30,9 @@ App.sharedClass('toggle-link', {
 });
 
 // --- 2. Login View ---
-const loginView = App.div().id('view-login').class('auth-container');
+// We use .ref() instead of .id()
+const loginView = App.div().ref('login').class('auth-container');
+
 loginView.append(App.h2().text('Welcome Back'))
     .append(App.input().attribute('type', 'email').attribute('placeholder', 'Email').class('form-input'))
     .append(App.input().attribute('type', 'password').attribute('placeholder', 'Password').class('form-input'))
@@ -40,12 +42,14 @@ loginView.append(App.h2().text('Welcome Back'))
         alert('Attempting Login...');
     }))
     .append(App.div().text('Need an account? Register here.').class('toggle-link').click(() => {
-        document.getElementById('view-login').style.display = 'none';
-        document.getElementById('view-register').style.display = 'block';
+        // Use UI.get() instead of document.getElementById
+        UI.get('login').style.display = 'none';
+        UI.get('register').style.display = 'block';
     }));
 
 // --- 3. Register View ---
-const registerView = App.div().id('view-register').class('auth-container').css({ display: 'none' });
+const registerView = App.div().ref('register').class('auth-container').css({ display: 'none' });
+
 registerView.append(App.h2().text('Create Account'))
     .append(App.input().attribute('placeholder', 'Full Name').class('form-input'))
     .append(App.input().attribute('type', 'email').attribute('placeholder', 'Email').class('form-input'))
@@ -56,14 +60,13 @@ registerView.append(App.h2().text('Create Account'))
         alert('Account Created Successfully!');
     }))
     .append(App.div().text('Already have an account? Login.').class('toggle-link').click(() => {
-        document.getElementById('view-login').style.display = 'block';
-        document.getElementById('view-register').style.display = 'none';
+        UI.get('login').style.display = 'block';
+        UI.get('register').style.display = 'none';
     }));
 
 // --- 4. Global Script ---
-App.oncreate(() => {
-    console.log("Auth UI Initialized.");
-});
+App.oncreate(() => { console.log("Auth UI Initialized."); });
+App.oncreate(() => { console.log("Second initialization check."); });
 
-// --- 5. Render (Using Flat Array) ---
+// --- 5. Render ---
 App.render([loginView, registerView], { title: 'Auth Portal' }).save('index.html');

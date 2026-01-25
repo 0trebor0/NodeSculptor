@@ -16,6 +16,13 @@ class NodeElement {
 
     id(value) { this.el.id = value; return this; }
     text(value) { this.el.textContent = value; return this; }
+    
+    ref(name) {
+        if (!this.el.id) this.el.id = this.engine.generateId();
+        this.engine.refs[name] = this.el.id;
+        return this;
+    }
+
     class(value) {
         try {
             let list = Array.isArray(value) ? value : [value];
@@ -25,6 +32,7 @@ class NodeElement {
         }
         return this;
     }
+    
     attribute(key, value) { this.el.setAttribute(key, value); return this; }
     css(styles) { Object.assign(this.el.style, styles); return this; }
 
@@ -41,12 +49,9 @@ class NodeElement {
     }
 
     on(event, fn) {
-        if (typeof fn !== 'function') {
-            throw new Error(`[NodeSculptor] .on('${event}', ...) expects a function, received ${typeof fn}`);
-        }
-        if (!this.el.id) {
-            this.el.id = this.engine.generateId();
-        }
+        if (typeof fn !== 'function') throw new Error(`[NodeSculptor] .on expects a function.`);
+        if (!this.el.id) this.el.id = this.engine.generateId();
+        
         this.engine.scriptBuffer.push(
             `document.getElementById('${this.el.id}').addEventListener('${event}', ${fn.toString()});`
         );
@@ -55,14 +60,13 @@ class NodeElement {
 
     click(fn) { return this.on('click', fn); }
 
-    append(child) {
-        try {
-            if (!child) return this;
+    // Improved Append: supports .append(a, b, c) or .append([a, b])
+    append(...children) {
+        children.flat().forEach(child => {
+            if (!child) return;
             let node = child instanceof NodeElement ? child.el : child;
             this.el.appendChild(node);
-        } catch (e) {
-            console.error(`[NodeSculptor] Append failed: ${e.message}`);
-        }
+        });
         return this;
     }
 }
@@ -72,6 +76,7 @@ class Sculptor {
         this.scriptBuffer = [];
         this.styleBuffer = [];
         this.loadBuffer = []; 
+        this.refs = {}; 
         this.idCounter = 0;
         this.classCounter = 0;
         this.lastRendered = "";
@@ -113,21 +118,40 @@ class Sculptor {
     }
 
     create(tag) { return new NodeElement(tag, this); }
+
+    // Tag Factories
     div() { return this.create('div'); }
+    span() { return this.create('span'); }
+    section() { return this.create('section'); }
+    article() { return this.create('article'); }
+    nav() { return this.create('nav'); }
+    header() { return this.create('header'); }
+    footer() { return this.create('footer'); }
+    main() { return this.create('main'); }
+    h1() { return this.create('h1'); }
+    h2() { return this.create('h2'); }
+    h3() { return this.create('h3'); }
+    p() { return this.create('p'); }
+    label() { return this.create('label'); }
+    a() { return this.create('a'); }
     button() { return this.create('button'); }
     input() { return this.create('input'); }
-    h2() { return this.create('h2'); }
+    textarea() { return this.create('textarea'); }
+    select() { return this.create('select'); }
+    option() { return this.create('option'); }
+    img() { return this.create('img'); }
+    ul() { return this.create('ul'); }
+    li() { return this.create('li'); }
+    canvas() { return this.create('canvas'); }
 
     render(root, config = {}) {
         try {
-            if (!root) throw new Error("No root element provided to render.");
-
             let head = document.querySelector('head');
             let body = document.querySelector('body');
-            
-            document.querySelector('title').textContent = config.title || "";
+            document.querySelector('title').textContent = config.title || "Sculpted Page";
             body.innerHTML = ""; 
 
+            // Process Styles
             if (this.styleBuffer.length > 0) {
                 let styleTag = document.createElement('style');
                 styleTag.textContent = `\n${this.styleBuffer.join('\n')}\n`;
@@ -135,26 +159,30 @@ class Sculptor {
                 this.styleBuffer = [];
             }
 
+            // Process Elements
             let elements = Array.isArray(root) ? root : [root];
-            elements.forEach((item, index) => {
-                if (!item) throw new Error(`Element at index ${index} is undefined.`);
+            elements.forEach(item => {
                 let node = item instanceof NodeElement ? item.el : item;
                 body.appendChild(node);
             });
 
-            let finalScripts = [...this.scriptBuffer];
+            // Process Scripts (Reference Map + Event Listeners + Lifecycle)
+            let refLookup = JSON.stringify(this.refs);
+            let refScript = `window.UI = { _m: ${refLookup}, get: (n) => document.getElementById(window.UI._m[n]) };`;
+
+            let finalScripts = [refScript, ...this.scriptBuffer];
             if (this.loadBuffer.length > 0) {
                 finalScripts.push(`window.addEventListener('load', () => {\n  ${this.loadBuffer.join('\n  ')}\n});`);
             }
 
-            if (finalScripts.length > 0) {
-                let scriptTag = document.createElement('script');
-                scriptTag.textContent = `\n${finalScripts.join('\n')}\n`;
-                body.appendChild(scriptTag);
-                this.scriptBuffer = [];
-                this.loadBuffer = [];
-            }
+            let scriptTag = document.createElement('script');
+            scriptTag.textContent = `\n${finalScripts.join('\n')}\n`;
+            body.appendChild(scriptTag);
 
+            // Clean up buffers for next potential render
+            this.scriptBuffer = [];
+            this.loadBuffer = [];
+            this.refs = {}; 
             this.lastRendered = dom.serialize();
         } catch (e) {
             console.error(`[NodeSculptor Render Error] ${e.message}`);
@@ -163,12 +191,7 @@ class Sculptor {
     }
 
     save(path) {
-        try {
-            if (!this.lastRendered) throw new Error("Nothing to save. Call render() first.");
-            fs.writeFileSync(path, this.lastRendered);
-        } catch (e) {
-            console.error(`[NodeSculptor Save Error] Failed to write to ${path}: ${e.message}`);
-        }
+        fs.writeFileSync(path, this.lastRendered);
         return this;
     }
 
