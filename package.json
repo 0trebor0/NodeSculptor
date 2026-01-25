@@ -1,23 +1,24 @@
 {
   "name": "nodesculptor",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A fluent server-side UI engine for Node.js to sculpt HTML5 documents with scoped CSS and consolidated body scripts.",
+  "main": "Sculptor.js", 
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node index.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/0trebor0/NodeSculptor.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "nodesculptor",
+    "fluent-api",
+    "server-side-rendering",
+    "jsdom"
+  ],
+  "author": "0trebor0",
+  "license": "MIT",
   "dependencies": {
     "jsdom": "^27.4.0"
-  },
-  "bugs": {
-    "url": "https://github.com/0trebor0/NodeSculptor/issues"
-  },
-  "homepage": "https://github.com/0trebor0/NodeSculptor#readme"
+  }
 }
