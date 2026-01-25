@@ -5,7 +5,7 @@ class NodeElement {
     constructor(tag, engine) {
         try {
             this.engine = engine;
-            this.el = engine.document.createElement(tag); // ← changed
+            this.el = engine.document.createElement(tag);
         } catch (e) {
             throw new Error(`[NodeSculptor] Failed to create element <${tag}>: ${e.message}`);
         }
@@ -75,9 +75,7 @@ class NodeElement {
 
 class Sculptor {
     constructor() {
-        // ✅ jsdom is now instance-scoped
         this.dom = new JSDOM(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body></body></html>`);
-
         this.document = this.dom.window.document;
 
         this.scriptBuffer = [];
@@ -209,7 +207,7 @@ class Sculptor {
             this.scriptBuffer = [];
             this.loadBuffer = [];
             this.refs = {};
-            this.lastRendered = this.dom.serialize(); // ← changed
+            this.lastRendered = this.dom.serialize();
         } catch (e) {
             console.error(`[NodeSculptor Render Error] ${e.message}`);
         }
