@@ -151,7 +151,24 @@ class Sculptor {
             document.querySelector('title').textContent = config.title || "Sculpted Page";
             body.innerHTML = ""; 
 
-            // Process Styles
+            // 1. ADD EXTERNAL CSS (if provided in config)
+            if (config.css) {
+                let link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = config.css;
+                head.appendChild(link);
+            }
+
+            // 2. ADD FAVICON (if provided in config)
+            if (config.icon) {
+                let icon = document.createElement('link');
+                icon.rel = 'shortcut icon';
+                icon.href = config.icon;
+                icon.type = 'image/x-icon';
+                head.appendChild(icon);
+            }
+
+            // Process Internal Styles (from sharedClass/uniqueClass)
             if (this.styleBuffer.length > 0) {
                 let styleTag = document.createElement('style');
                 styleTag.textContent = `\n${this.styleBuffer.join('\n')}\n`;
@@ -166,7 +183,7 @@ class Sculptor {
                 body.appendChild(node);
             });
 
-            // Process Scripts (Reference Map + Event Listeners + Lifecycle)
+            // Process Scripts
             let refLookup = JSON.stringify(this.refs);
             let refScript = `window.UI = { _m: ${refLookup}, get: (n) => document.getElementById(window.UI._m[n]) };`;
 
@@ -179,7 +196,6 @@ class Sculptor {
             scriptTag.textContent = `\n${finalScripts.join('\n')}\n`;
             body.appendChild(scriptTag);
 
-            // Clean up buffers for next potential render
             this.scriptBuffer = [];
             this.loadBuffer = [];
             this.refs = {}; 

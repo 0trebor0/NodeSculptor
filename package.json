@@ -1,6 +1,6 @@
 {
   "name": "nodesculptor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A fluent server-side UI engine for Node.js to sculpt HTML5 documents with scoped CSS and consolidated body scripts.",
   "main": "Sculptor.js", 
   "scripts": {
