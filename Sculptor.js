@@ -153,10 +153,13 @@ class Sculptor {
 
             // 1. ADD EXTERNAL CSS (if provided in config)
             if (config.css) {
-                let link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = config.css;
-                head.appendChild(link);
+                let cssFiles = Array.isArray(config.css) ? config.css : [config.css];
+                cssFiles.forEach(href => {
+                    let link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = href;
+                    head.appendChild(link);
+                });
             }
 
             // 2. ADD FAVICON (if provided in config)
