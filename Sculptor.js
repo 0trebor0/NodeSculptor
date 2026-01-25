@@ -28,7 +28,6 @@ class NodeElement {
         return this;
     }
 
-    // Now NodeElement can trigger oncreate for the global engine
     oncreate(fn) {
         this.engine.oncreate(fn);
         return this;
@@ -63,6 +62,12 @@ class Sculptor {
         this.lastRendered = "";
     }
 
+    // --- Shared Styling ---
+    sharedClass(name, rules) {
+        this.defineClass(name, rules);
+        return this;
+    }
+
     oncreate(fn) {
         this.loadBuffer.push(`(${fn.toString()})();`);
         return this;
@@ -88,12 +93,14 @@ class Sculptor {
         return this;
     }
 
+    // --- Factories ---
     create(tag) { return new NodeElement(tag, this); }
     div() { return this.create('div'); }
     button() { return this.create('button'); }
     input() { return this.create('input'); }
     h2() { return this.create('h2'); }
 
+    // --- Render ---
     render(root, config = { title: 'Sculptor App' }) {
         let html = this.create('html').attribute('lang', 'en');
         let head = this.create('head');
@@ -119,7 +126,6 @@ class Sculptor {
 
         let finalScripts = [...this.scriptBuffer];
         if (this.loadBuffer.length > 0) {
-            // Requirement: window.onload logic inside the body script
             finalScripts.push(`window.addEventListener('load', () => {\n  ${this.loadBuffer.join('\n  ')}\n});`);
         }
 
