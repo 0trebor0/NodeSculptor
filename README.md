@@ -1,18 +1,20 @@
 # NodeSculptor 🎨
 
-A fluent, server-side UI engine for Node.js that "sculpts" complete HTML5 documents with scoped CSS and consolidated JavaScript.
+A fluent, server-side UI engine for Node.js that **compiles** complete HTML5 documents with scoped CSS and consolidated JavaScript.
 
 NodeSculptor allows you to build complex front-end structures using a pure **name(value)** chaining pattern, while automatically handling ID collisions, script buffering, and element referencing.
+
+---
 
 ## 🚀 Key Features
 
 * **Fluent API:** Every method follows the `name(value)` pattern and returns the object for seamless chaining.
-* **Smart Referencing:** Use `.ref('name')` on the server and `UI.get('name')` in the browser—no more manual `document.getElementById`.
+* **The Reference System:** Use `.ref('name')` on the server and `UI.get('name')` in the browser—no more manual `document.getElementById`.
 * **Scoped Styling:** `uniqueClass()` generates collision-proof classes, while `sharedClass()` allows for reusable styles.
 * **Consolidated Scripts:** All event listeners and lifecycle hooks are injected into a **single script tag** at the bottom of the `<body>`.
-* **Flat Rendering:** Pass a single element or an `Array` of elements to `render()` for clean, flat HTML structures.
-* **Smart Error Handling:** Prefixed console warnings and input validation for server-side debugging.
-* **Zero Boilerplate:** One-line `render().save()` workflow with built-in `viewport` and `charset` support.
+* **Static Compiler Architecture:** Designed to be built once and served as static HTML, avoiding `JSDOM` overhead on every request.
+
+---
 
 ## 📦 Installation
 
@@ -21,7 +23,11 @@ npm install nodesculptor
 
 ```
 
-## 🛠 Usage Example
+---
+
+## 🛠 Usage Examples
+
+### 1. Basic Build Step (Static Generation)
 
 ```javascript
 const Sculptor = require('nodesculptor');
@@ -29,20 +35,82 @@ const App = new Sculptor();
 
 App.sharedClass('btn', { padding: '10px 20px', cursor: 'pointer' });
 
-// Create a view with a reference
-const loginBox = App.div().ref('login-ui').class('auth-container');
+const container = App.div().ref('wrapper').css({ textAlign: 'center' });
 
-loginBox.append(
+container.append(
+    App.h1().text('Build-Time UI'),
     App.button().text('Hide Me').class('btn')
         .click(() => {
-            // Use the Reference System instead of document.getElementById
-            UI.get('login-ui').style.display = 'none';
+            UI.get('wrapper').style.display = 'none';
         })
 );
 
-App.render(loginBox, { title: 'NodeSculptor App' }).save('index.html');
+// Compile and save to static file
+App.render(container, { title: 'NodeSculptor App' }).save('index.html');
 
 ```
+
+### 2. Component Pattern (Reusable UI)
+
+Because NodeSculptor is a compiler, you can create reusable functions that return `NodeElement` objects.
+
+```javascript
+const Card = (title, description) => {
+    return App.div().uniqueClass({ 
+        border: '1px solid #ccc', 
+        borderRadius: '8px', 
+        padding: '16px' 
+    }).append(
+        App.h3().text(title),
+        App.p().text(description),
+        App.button().text('Select').click(() => alert('Selected!'))
+    );
+};
+
+App.render([
+    Card('Product A', 'Best choice'),
+    Card('Product B', 'Budget friendly')
+]).save('products.html');
+
+```
+
+---
+
+## 🌐 Express.js Integration
+
+Since NodeSculptor is a **compiler**, you should avoid rebuilding the DOM on every request to maintain high performance.
+
+### 1. Static Asset Pattern (Recommended)
+
+Compile your files to a `public` or `dist` folder and serve them via static middleware.
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.static('public'));
+app.listen(3000);
+
+```
+
+### 2. Startup Memoization
+
+Compile the page **once** when the server starts and store the string in memory.
+
+```javascript
+const UI = new Sculptor();
+const layout = UI.main().append(UI.h1().text('Cached Dashboard'));
+
+// Compile ONCE at startup
+const CACHED_HTML = UI.render(layout).output();
+
+app.get('/dashboard', (req, res) => {
+    res.send(CACHED_HTML); 
+});
+
+```
+
+---
 
 ## 📚 API Reference
 
@@ -52,63 +120,50 @@ App.render(loginBox, { title: 'NodeSculptor App' }).save('index.html');
 | --- | --- |
 | `create(tag)` | Factory for any HTML element (e.g. `App.create('section')`). |
 | `sharedClass(name, rules)` | Defines a reusable CSS class in the global sheet. |
-| `oncreate(fn)` | Logic that runs on `window.onload`. Multiple calls are bundled. |
-| `render(root, config)` | Compiles UI. `root` can be a `NodeElement` or `Array`. |
-| `save(path)` | Writes the final `index.html` to the file system. |
+| `oncreate(fn)` | Bundles logic into a `window.load` listener in the final script. |
+| `render(root, config)` | Compiles the UI. Config supports `title`, `css` (hrefs), and `icon`. |
+| `output()` | Returns the full `dom.serialize()` HTML string. |
+| `save(path)` | Writes the final HTML file to the file system. |
 
 ### `NodeElement` (The Element)
 
 | Method | Description |
 | --- | --- |
-| `.ref(name)` | **New:** Assigns a "nickname" to an element for easy browser-side access. |
-| `.id(val)` / `.text(val)` | Sets the standard HTML ID or Text Content. |
-| `.uniqueClass(rules)` | Generates a scoped, collision-free class for this element. |
-| `.on(event, fn)` | Attaches a browser-side event listener (click, input, etc). |
-| `.append(child)` | Nests another `NodeElement` or raw JSDOM node. |
+| `.ref(name)` | Assigns a nickname for `UI.get(name)` browser access. |
+| `.id(val)` | Sets the standard HTML `id`. |
+| `.text(val)` | Sets the `textContent` of the element. |
+| `.class(val)` | Adds CSS classes (accepts string or array). |
+| `.attribute(k, v)` | Sets a custom HTML attribute. |
+| `.css(styles)` | Sets inline styles via an object. |
+| `.uniqueClass(rules)` | Creates and applies a scoped, unique CSS class. |
+| `.on(event, fn)` | Attaches a browser-side event listener. |
+| `.click(fn)` | Shorthand for `.on('click', fn)`. |
+| `.child(tag)` | Creates, appends, and returns a new `NodeElement`. |
+| `.append(...children)` | Appends multiple children (accepts nested arrays). |
 
-## 🎓 Advanced Guide
+---
 
-### The Reference System (`UI.get`)
+## 🎓 Advanced Guide: The Compiler
 
-Writing `document.getElementById('some-long-id')` inside a stringified function is error-prone. NodeSculptor solves this by mapping server-side references to client-side nodes.
+### 🏗 Deep Dive: How it Works
 
+NodeSculptor manages a virtual lifecycle through three distinct phases:
+
+1. **The Synthesis Phase (Server-Side):**
+When you chain methods, NodeSculptor builds a **Live DOM Tree** using `JSDOM`. This catches invalid nesting and structural errors during the build step.
+2. **The Dehydration Phase (`.render()`):**
+The compiler flattens the object graph. CSS properties are converted from `camelCase` to `kebab-case`. Event handlers are stringified into the **Script Buffer**.
+3. **The Injection Phase (Final Output):**
+The compiler generates a **Reference Map** (`UI._m`) and injects it along with the buffered scripts into a **single script tag at the bottom of the `<body>**`. This ensures the DOM is fully loaded before the JS executes.
+
+### 🚫 Compiler Constraints
+
+Since handlers are **stringified**, you must treat `.on()` and `.click()` as isolated islands.
+
+* **No Server Closures:** Variables in your Node script aren't available in the browser handlers.
+* **Data Injection:** To pass data, inject it as a literal using a `new Function` or template strings:
 ```javascript
-const box = App.div().ref('myBox');
-
-App.button().text('Toggle').click(() => {
-    const el = UI.get('myBox'); // Refers to the 'box' element above
-    el.style.opacity = el.style.opacity === '0' ? '1' : '0';
-});
+const myData = "Hello";
+App.button().click(new Function(`alert("${myData}")`));
 
 ```
-
-### State Management & SPA Logic
-
-Maintain "state" in the browser by initializing variables in an `oncreate()` block.
-
-```javascript
-App.oncreate(() => {
-    window.state = { currentView: 'home' };
-});
-
-// View switching logic using references
-App.button().text('Go to Settings').click(() => {
-    UI.get('view-home').style.display = 'none';
-    UI.get('view-settings').style.display = 'block';
-});
-
-```
-
-### The Function Bridge
-
-When you pass a function to `.on()`, NodeSculptor stringifies it for the browser.
-
-* **🚫 Server Variables:** You cannot use Node.js variables (like `process` or `__dirname`) inside handlers.
-* **✅ Browser APIs:** You have full access to `window`, `document`, `fetch`, and `localStorage`.
-
-## 🏗 How it Works
-
-1. **Style Buffer:** CSS objects are converted from camelCase to kebab-case and flushed into a single `<style>` tag in the `<head>`.
-2. **Reference Map:** The engine generates a lookup table (`UI._m`) that maps your `.ref()` names to the unique generated IDs.
-3. **Script Buffer:** Functions are stringified and bundled into one `<script>` at the end of the `<body>` to ensure the DOM is ready.
-4. **Validation:** The engine catches non-function inputs or undefined elements and logs them with `[NodeSculptor]` prefixes.
