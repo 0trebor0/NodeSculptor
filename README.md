@@ -1,3 +1,5 @@
+---
+
 # NodeSculptor 🎨
 
 A fluent, server-side UI engine for Node.js that **compiles** complete HTML5 documents with scoped CSS and consolidated JavaScript.
@@ -10,7 +12,7 @@ NodeSculptor allows you to build complex front-end structures using a pure **nam
 
 * **Fluent API:** Every method follows the `name(value)` pattern and returns the object for seamless chaining.
 * **The Reference System:** Use `.ref('name')` on the server and `UI.get('name')` in the browser—no more manual `document.getElementById`.
-* **Scoped Styling:** `uniqueClass()` generates collision-proof classes, while `sharedClass()` allows for reusable styles.
+* **Scoped & Global Styling:** `uniqueClass()` generates collision-proof classes, while `globalStyle()` lets you target tags like `body` or `h1` directly without a class name.
 * **Consolidated Scripts:** All event listeners and lifecycle hooks are injected into a **single script tag** at the bottom of the `<body>`.
 * **Static Compiler Architecture:** Designed to be built once and served as static HTML, avoiding `JSDOM` overhead on every request.
 
@@ -32,6 +34,9 @@ npm install nodesculptor
 ```javascript
 const Sculptor = require('nodesculptor');
 const App = new Sculptor();
+
+// Global styling for the whole document
+App.globalStyle('body', { margin: '0', backgroundColor: '#f0f0f0' });
 
 App.sharedClass('btn', { padding: '10px 20px', cursor: 'pointer' });
 
@@ -118,6 +123,7 @@ app.get('/dashboard', (req, res) => {
 
 | Method | Description |
 | --- | --- |
+| `globalStyle(selector, rules)` | Styles raw selectors (e.g. `body`, `*`) without a class prefix. |
 | `create(tag)` | Factory for any HTML element (e.g. `App.create('section')`). |
 | `sharedClass(name, rules)` | Defines a reusable CSS class in the global sheet. |
 | `oncreate(fn)` | Bundles logic into a `window.load` listener in the final script. |
@@ -162,6 +168,7 @@ Since handlers are **stringified**, you must treat `.on()` and `.click()` as iso
 
 * **No Server Closures:** Variables in your Node script aren't available in the browser handlers.
 * **Data Injection:** To pass data, inject it as a literal using a `new Function` or template strings:
+
 ```javascript
 const myData = "Hello";
 App.button().click(new Function(`alert("${myData}")`));

@@ -87,6 +87,11 @@ class Sculptor {
         this.lastRendered = "";
     }
 
+    // New: Allows styling tags like body, h1, etc.
+    globalStyle(selector, rules) {
+        return this.defineClass(selector, rules, true);
+    }
+
     sharedClass(name, rules) {
         this.defineClass(name, rules);
         return this;
@@ -108,14 +113,16 @@ class Sculptor {
         return `sc-cls-${this.classCounter}`;
     }
 
-    defineClass(name, rules) {
+    defineClass(selector, rules, isRawSelector = false) {
         try {
             let cssString = Object.entries(rules)
                 .map(([prop, val]) => {
                     let key = prop.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
                     return `${key}: ${val};`;
                 }).join(' ');
-            this.styleBuffer.push(`.${name} { ${cssString} }`);
+            
+            let finalSelector = isRawSelector ? selector : `.${selector}`;
+            this.styleBuffer.push(`${finalSelector} { ${cssString} }`);
         } catch (e) {
             console.error(`[NodeSculptor] CSS Definition Error: ${e.message}`);
         }
@@ -202,6 +209,7 @@ class Sculptor {
 
             let scriptTag = document.createElement('script');
             scriptTag.textContent = `\n${finalScripts.join('\n')}\n`;
+            // The script tag is inside the body as requested
             body.appendChild(scriptTag);
 
             this.scriptBuffer = [];
