@@ -79,14 +79,19 @@ class Sculptor {
         this.loadBuffer = [];
         this.stateBuffer = {};
         this.refs = {};
-        this.idCounter = 0;
-        this.classCounter = 0;
     }
 
-    generateId() { return `sc-id-${++this.idCounter}-${Math.random().toString(36).substring(2, 5)}`; }
-    generateClassName() { return `sc-cls-${++this.classCounter}`; }
-    create(tag) { return new NodeElement(tag, this); }
+    // Obfuscated ID Generator: Generates random hex-like strings (e.g., "_x7a2b9")
+    generateId() { 
+        return `_${Math.random().toString(36).substring(2, 9)}`; 
+    }
 
+    // Obfuscated Class Generator: Generates short random strings (e.g., "_k9s2")
+    generateClassName() { 
+        return `_${Math.random().toString(36).substring(2, 7)}`; 
+    }
+
+    create(tag) { return new NodeElement(tag, this); }
     state(key, value) { this.stateBuffer[key] = value; return this; }
     
     defineClass(selector, rules, isRaw = false) {
@@ -100,6 +105,7 @@ class Sculptor {
 
     oncreate(fn) { this.loadBuffer.push(`(${fn.toString()})();`); return this; }
 
+    // Element Shorthands
     div() { return this.create('div'); }
     button() { return this.create('button'); }
     h1() { return this.create('h1'); }
@@ -112,45 +118,38 @@ class Sculptor {
         const body = doc.querySelector('body');
         head.innerHTML = body.innerHTML = "";
 
+        // Internal JS Crusher to protect logic and save space
+        const crush = (js) => js
+            .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '') // Strip comments
+            .replace(/\s+/g, ' ')                   // Collapse whitespace
+            .replace(/{\s+/g, '{').replace(/\s+}/g, '}') 
+            .replace(/;\s+/g, ';')
+            .trim();
+
         const title = doc.createElement('title');
         title.textContent = config.title || "Sculpted Page";
         head.appendChild(title);
 
         if (this.styleBuffer.length) {
             const style = doc.createElement('style');
-            style.textContent = this.styleBuffer.join('\n');
+            style.textContent = this.styleBuffer.join('').replace(/\s+/g, ' ');
             head.appendChild(style);
         }
 
         (Array.isArray(root) ? root : [root]).forEach(node => body.appendChild(node.el || node));
 
+        // Compressed Runtime
         const runtime = `
-            window.UI = { 
-                _m: ${JSON.stringify(this.refs)}, 
-                get: (n) => document.getElementById(window.UI._m[n]) 
-            };
-            const _cbs = {};
-            window.watchState = (k, f) => { (_cbs[k] = _cbs[k] || []).push(f); };
-            window.State = new Proxy(${JSON.stringify(this.stateBuffer)}, {
-                set(t, k, v) {
-                    if (t[k] === v) return true; 
-                    t[k] = v;
-                    if(_cbs[k]) _cbs[k].forEach(f => f(v));
-                    return true;
-                }
+            window.UI={_m:${JSON.stringify(this.refs)},get:(n)=>document.getElementById(window.UI._m[n])};
+            const _cbs={};window.watchState=(k,f)=>{(_cbs[k]=_cbs[k]||[]).push(f)};
+            window.State=new Proxy(${JSON.stringify(this.stateBuffer)},{
+                set(t,k,v){if(t[k]===v)return true;t[k]=v;if(_cbs[k])_cbs[k].forEach(f=>f(v));return true}
             });
         `;
 
         const script = doc.createElement('script');
-        script.textContent = `
-            (function() {
-                ${runtime}
-                ${this.scriptBuffer.join('\n')}
-                window.addEventListener('DOMContentLoaded', () => {
-                    ${this.loadBuffer.join('\n')}
-                });
-            })();
-        `;
+        script.textContent = `(function(){${crush(runtime)}${crush(this.scriptBuffer.join(''))}window.addEventListener('DOMContentLoaded',()=>{${crush(this.loadBuffer.join(''))}})})()`;
+        
         body.appendChild(script);
 
         this.lastRendered = this.dom.serialize();
