@@ -1,20 +1,18 @@
----
-
 # NodeSculptor 🎨
 
-A fluent, server-side UI engine for Node.js that **compiles** complete HTML5 documents with scoped CSS and consolidated JavaScript.
+A fluent, server-side UI engine for Node.js that **compiles** complete, reactive HTML5 documents with scoped CSS and consolidated JavaScript.
 
-NodeSculptor allows you to build complex front-end structures using a pure **name(value)** chaining pattern, while automatically handling ID collisions, script buffering, and element referencing.
+NodeSculptor allows you to build complex front-end structures using a pure **name(value)** chaining pattern, while automatically handling ID collisions, surgical DOM updates, and element referencing.
 
 ---
 
 ## 🚀 Key Features
 
 * **Fluent API:** Every method follows the `name(value)` pattern and returns the object for seamless chaining.
+* **Zero-Bundle Reactivity:** Built-in `Proxy` state management that updates the DOM surgically without a heavy library like React or Vue.
 * **The Reference System:** Use `.ref('name')` on the server and `UI.get('name')` in the browser—no more manual `document.getElementById`.
-* **Scoped & Global Styling:** `uniqueClass()` generates collision-proof classes, while `globalStyle()` lets you target tags like `body` or `h1` directly without a class name.
-* **Consolidated Scripts:** All event listeners and lifecycle hooks are injected into a **single script tag** at the bottom of the `<body>`.
-* **Static Compiler Architecture:** Designed to be built once and served as static HTML, avoiding `JSDOM` overhead on every request.
+* **Scoped & Global Styling:** `uniqueClass()` generates collision-proof classes dynamically during the build.
+* **Static Compiler Architecture:** Built with `JSDOM` for structure, but outputs pure, lightweight HTML/JS for the client.
 
 ---
 
@@ -35,47 +33,41 @@ npm install nodesculptor
 const Sculptor = require('nodesculptor');
 const App = new Sculptor();
 
-// Global styling for the whole document
-App.globalStyle('body', { margin: '0', backgroundColor: '#f0f0f0' });
+App.globalStyle('body', { margin: '0', fontFamily: 'sans-serif' });
 
-App.sharedClass('btn', { padding: '10px 20px', cursor: 'pointer' });
-
-const container = App.div().ref('wrapper').css({ textAlign: 'center' });
+const container = App.div().css({ padding: '20px' });
 
 container.append(
-    App.h1().text('Build-Time UI'),
-    App.button().text('Hide Me').class('btn')
-        .click(() => {
-            UI.get('wrapper').style.display = 'none';
-        })
+    App.h1().text('Hello World'),
+    App.button().text('Alert Me').click(() => alert('Compiled!'))
 );
 
-// Compile and save to static file
-App.render(container, { title: 'NodeSculptor App' }).save('index.html');
+App.render(container).save('index.html');
 
 ```
 
-### 2. Component Pattern (Reusable UI)
+### 2. Reactivity & State Management
 
-Because NodeSculptor is a compiler, you can create reusable functions that return `NodeElement` objects.
+NodeSculptor features a "surgical" reactivity system. You define state on the server, and the compiler injects a reactive Proxy into the browser that updates **only** the necessary elements.
 
 ```javascript
-const Card = (title, description) => {
-    return App.div().uniqueClass({ 
-        border: '1px solid #ccc', 
-        borderRadius: '8px', 
-        padding: '16px' 
-    }).append(
-        App.h3().text(title),
-        App.p().text(description),
-        App.button().text('Select').click(() => alert('Selected!'))
-    );
-};
+const App = new Sculptor();
 
-App.render([
-    Card('Product A', 'Best choice'),
-    Card('Product B', 'Budget friendly')
-]).save('products.html');
+// 1. Define Initial State
+App.state('count', 0);
+
+const ui = App.div().append(
+    // 2. Bind UI to State
+    // Text updates automatically when State.count changes
+    App.h1().bind('count', (v) => `Count is: ${v}`),
+
+    // 3. Mutate State in Browser listeners
+    App.button().text('+1').click(() => {
+        State.count++; 
+    })
+);
+
+App.render(ui).save('index.html');
 
 ```
 
@@ -83,35 +75,35 @@ App.render([
 
 ## 🌐 Express.js Integration
 
-Since NodeSculptor is a **compiler**, you should avoid rebuilding the DOM on every request to maintain high performance.
+Since NodeSculptor is a **compiler**, it is designed for maximum speed. You should compile your layouts **once** during the server startup and serve the cached string.
 
-### 1. Static Asset Pattern (Recommended)
-
-Compile your files to a `public` or `dist` folder and serve them via static middleware.
+### The "Startup Cache" Pattern
 
 ```javascript
 const express = require('express');
+const Sculptor = require('nodesculptor');
 const app = express();
 
-app.use(express.static('public'));
-app.listen(3000);
+function buildDashboard() {
+    const UI = new Sculptor();
+    UI.state('user', 'Developer');
+    
+    const layout = UI.div().css({ textAlign: 'center' }).append(
+        UI.h1().bind('user', (name) => `Welcome, ${name}`),
+        UI.button().text('Log Out').click(() => { State.user = 'Guest'; })
+    );
 
-```
+    return UI.render(layout, { title: 'Dashboard' }).output();
+}
 
-### 2. Startup Memoization
+// Compile once at startup
+const DASHBOARD_PAGE = buildDashboard();
 
-Compile the page **once** when the server starts and store the string in memory.
-
-```javascript
-const UI = new Sculptor();
-const layout = UI.main().append(UI.h1().text('Cached Dashboard'));
-
-// Compile ONCE at startup
-const CACHED_HTML = UI.render(layout).output();
-
-app.get('/dashboard', (req, res) => {
-    res.send(CACHED_HTML); 
+app.get('/', (req, res) => {
+    res.send(DASHBOARD_PAGE);
 });
+
+app.listen(3000, () => console.log('Server running on port 3000'));
 
 ```
 
@@ -123,28 +115,24 @@ app.get('/dashboard', (req, res) => {
 
 | Method | Description |
 | --- | --- |
-| `globalStyle(selector, rules)` | Styles raw selectors (e.g. `body`, `*`) without a class prefix. |
-| `create(tag)` | Factory for any HTML element (e.g. `App.create('section')`). |
+| `state(key, value)` | Initializes reactive state accessible via `window.State` in-browser. |
+| `globalStyle(sel, rules)` | Styles raw selectors (e.g. `body`, `*`) in the document head. |
 | `sharedClass(name, rules)` | Defines a reusable CSS class in the global sheet. |
-| `oncreate(fn)` | Bundles logic into a `window.load` listener in the final script. |
-| `render(root, config)` | Compiles the UI. Config supports `title`, `css` (hrefs), and `icon`. |
-| `output()` | Returns the full `dom.serialize()` HTML string. |
-| `save(path)` | Writes the final HTML file to the file system. |
+| `oncreate(fn)` | Runs logic in the browser once `DOMContentLoaded` fires. |
+| `render(root, config)` | Compiles the UI. Config supports `title` and `meta`. |
+| `output()` | Returns the full HTML string. |
+| `save(path)` | Writes the final HTML file to the disk. |
 
 ### `NodeElement` (The Element)
 
 | Method | Description |
 | --- | --- |
-| `.ref(name)` | Assigns a nickname for `UI.get(name)` browser access. |
-| `.id(val)` | Sets the standard HTML `id`. |
-| `.text(val)` | Sets the `textContent` of the element. |
-| `.class(val)` | Adds CSS classes (accepts string or array). |
-| `.attribute(k, v)` | Sets a custom HTML attribute. |
-| `.css(styles)` | Sets inline styles via an object. |
-| `.uniqueClass(rules)` | Creates and applies a scoped, unique CSS class. |
+| `.bind(key, fn)` | **Reactive:** Links element text to a `State` key via a transform function. |
+| `.ref(name)` | Assigns a nickname for `UI.get('name')` browser access. |
+| `.text(val)` | Sets static `textContent`. Automatically sanitized against XSS. |
+| `.uniqueClass(rules)` | Creates and applies a scoped, collision-proof CSS class. |
 | `.on(event, fn)` | Attaches a browser-side event listener. |
 | `.click(fn)` | Shorthand for `.on('click', fn)`. |
-| `.child(tag)` | Creates, appends, and returns a new `NodeElement`. |
 | `.append(...children)` | Appends multiple children (accepts nested arrays). |
 
 ---
@@ -155,22 +143,80 @@ app.get('/dashboard', (req, res) => {
 
 NodeSculptor manages a virtual lifecycle through three distinct phases:
 
-1. **The Synthesis Phase (Server-Side):**
-When you chain methods, NodeSculptor builds a **Live DOM Tree** using `JSDOM`. This catches invalid nesting and structural errors during the build step.
-2. **The Dehydration Phase (`.render()`):**
-The compiler flattens the object graph. CSS properties are converted from `camelCase` to `kebab-case`. Event handlers are stringified into the **Script Buffer**.
-3. **The Injection Phase (Final Output):**
-The compiler generates a **Reference Map** (`UI._m`) and injects it along with the buffered scripts into a **single script tag at the bottom of the `<body>**`. This ensures the DOM is fully loaded before the JS executes.
+1. **The Synthesis Phase (Server-Side):** NodeSculptor builds a **Live DOM Tree** using `JSDOM`. This ensures structural integrity during the build.
+2. **The Dehydration Phase (`.render()`):** The compiler flattens the graph. CSS is converted to `kebab-case`. State is stringified, and the **Surgical Binding** map is created.
+3. **The Injection Phase (Final Output):** A microscopic runtime (approx. 400 bytes) is injected. It uses a **Native Proxy** to listen for state changes and update only the specific DOM IDs linked to those keys.
 
-### 🚫 Compiler Constraints
+---
 
-Since handlers are **stringified**, you must treat `.on()` and `.click()` as isolated islands.
+## 🎨 Examples Gallery
 
-* **No Server Closures:** Variables in your Node script aren't available in the browser handlers.
-* **Data Injection:** To pass data, inject it as a literal using a `new Function` or template strings:
+### A. Real-time Input Sync
+
+Create a live-previewing input field where the state updates on every keystroke.
 
 ```javascript
-const myData = "Hello";
-App.button().click(new Function(`alert("${myData}")`));
+App.state('msg', 'Type something...');
+
+const inputGroup = App.div().append(
+    App.create('input')
+        .attribute('placeholder', 'Enter message')
+        .on('input', (e) => { State.msg = e.target.value; }),
+    
+    App.p().bind('msg', (v) => `Preview: ${v}`)
+);
+
+```
+
+### B. Reactive List/Array (The Filter Pattern)
+
+While NodeSculptor doesn't have a virtual-dom loop, you can use `State` to filter UI elements by combining `.bind()` with CSS.
+
+```javascript
+App.state('searchQuery', '');
+
+App.create('input').on('input', (e) => { State.searchQuery = e.target.value; });
+
+// Use State to control visibility via a Ref
+App.div().ref('item').bind('searchQuery', (query) => {
+    const el = UI.get('item');
+    el.style.display = el.textContent.includes(query) ? 'block' : 'none';
+    return "My Secret Item";
+});
+
+```
+
+### C. Dynamic Progress Bar
+
+Bind state to styles directly inside a browser event.
+
+```javascript
+App.state('progress', 0);
+
+const bar = App.div().uniqueClass({ height: '10px', background: 'blue' }).ref('bar');
+
+const intervalBtn = App.button().text('Start Loading').click(() => {
+    let interval = setInterval(() => {
+        State.progress += 5;
+        UI.get('bar').style.width = State.progress + '%';
+        if(State.progress >= 100) clearInterval(interval);
+    }, 100);
+});
+
+```
+
+### D. Multi-Element Sync
+
+One state change can trigger unlimited UI updates across different elements.
+
+```javascript
+App.state('isLoggedIn', false);
+
+const nav = App.div().append(
+    App.span().bind('isLoggedIn', (v) => v ? 'Welcome User!' : 'Please Login'),
+    App.button().bind('isLoggedIn', (v) => v ? 'Logout' : 'Login').click(() => {
+        State.isLoggedIn = !State.isLoggedIn;
+    })
+);
 
 ```
