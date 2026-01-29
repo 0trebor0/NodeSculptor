@@ -181,3 +181,130 @@ const intervalBtn = App.button().text('Start Loading').click(() => {
 });
 
 ```
+## 📁 Recommended Project Structure
+
+```text
+my-sculptor-app/
+├── public/          # Compiled output
+│   └── index.html
+├── src/
+│   ├── components/  # Reusable UI pieces
+│   │   └── Card.js
+│   └── main.js      # Compiler & Server logic
+├── package.json
+└── .gitignore
+
+```
+
+---
+
+## 🏗️ 1. The Reusable Component (`src/components/Card.js`)
+
+In NodeSculptor, components are just functions that return a `NodeElement`.
+
+```javascript
+module.exports = function Card(App, title, content) {
+    return App.div().uniqueClass({
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '15px',
+        margin: '10px 0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    }).append(
+        App.h1().text(title).css({ marginTop: '0' }),
+        App.p().text(content)
+    );
+};
+
+```
+
+---
+
+## 🚀 2. The Main Script (`src/main.js`)
+
+This script defines the state, assembles the page using your components, and renders the final file.
+
+```javascript
+const Sculptor = require('nodesculptor');
+const Card = require('./components/Card');
+const fs = require('fs');
+const path = require('path');
+
+const App = new Sculptor();
+
+// 1. Setup Global Styles
+App.defineClass('body', {
+    backgroundColor: '#f4f7f6',
+    color: '#333',
+    fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '50px'
+}, true);
+
+// 2. Define Reactive State
+App.state('clicks', 0);
+App.state('lastUpdated', new Date().toLocaleTimeString());
+
+// 3. Assemble UI
+const layout = App.div().css({ width: '100%', maxWidth: '500px' }).append(
+    Card(App, 'NodeSculptor Dashboard', 'This page was compiled on the server and is now reactive in the browser.'),
+    
+    App.div().uniqueClass({ 
+        background: 'white', 
+        padding: '20px', 
+        borderRadius: '8px',
+        textAlign: 'center' 
+    }).append(
+        App.h1().bind('clicks', (v) => `Button Clicked: ${v} times`),
+        App.p().bind('lastUpdated', (v) => `Last interaction: ${v}`),
+        
+        App.button()
+            .text('Increment Counter')
+            .uniqueClass({
+                padding: '10px 20px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px'
+            })
+            .click(() => {
+                State.clicks++;
+                State.lastUpdated = new Date().toLocaleTimeString();
+            })
+    )
+);
+
+// 4. Compile and Save
+const html = App.render(layout, { title: 'My Sculptor App' }).output();
+
+const outPath = path.join(__currentDir, '../public/index.html');
+if (!fs.existsSync(path.dirname(outPath))) fs.mkdirSync(path.dirname(outPath));
+
+App.save(outPath);
+console.log('Successfully sculpted: /public/index.html');
+
+```
+
+---
+
+## 🛠️ 3. How to Run
+
+1. **Initialize:** `npm init -y`
+2. **Install Dependencies:** `npm install nodesculptor`
+3. **Run Build:** `node src/main.js`
+4. **View:** Open `public/index.html` in any browser.
+
+### 💡 Pro Tip: Development Workflow
+
+You can add a simple "watch" script to your `package.json` so that the page re-compiles whenever you change your code:
+
+```json
+"scripts": {
+  "build": "node src/main.js",
+  "dev": "node --watch src/main.js"
+}
+
+```
